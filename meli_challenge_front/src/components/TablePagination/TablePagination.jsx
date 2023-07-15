@@ -21,7 +21,7 @@ const TablePagination = () => {
     description: "",
     countryid: 0
   });
-  const SERVICE_URL = "http://localhost:8000";
+  const SERVICE_URL = process.env.REACT_APP_EVENTS_URL_API;
   const pageSizes = [3, 5, 10, 25, 50, 100];
 
   const fetchEvents = (page) => {
