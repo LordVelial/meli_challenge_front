@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import Table from 'react-bootstrap/Table';
 import Pagination from 'react-bootstrap/Pagination';
+import Modal from 'react-bootstrap/Modal';
+import Button from 'react-bootstrap/Button';
 import "./TablePagination.css";
 
 const TablePagination = () => {
@@ -13,11 +15,17 @@ const TablePagination = () => {
   const [selectedCountry, setSelectedCountry] = useState("");
   const [searchText, setSearchText] = useState("");
   const [searchPerformed, setSearchPerformed] = useState(false);
-
+  const [showModal, setShowModal] = useState(false);
+  const [modalData, setModalData] = useState({
+    typeid: 0,
+    description: "",
+    countryid: 0
+  });
+  const SERVICE_URL = "http://localhost:8000";
   const pageSizes = [3, 5, 10, 25, 50, 100];
 
   const fetchEvents = (page) => {
-    let url = `http://localhost:8000/events?page=${page}&pageSize=${pageSize}`;
+    let url = `${SERVICE_URL}/events?page=${page}&pageSize=${pageSize}`;
 
     if (searchPerformed) {
       if (searchText) {
@@ -43,7 +51,7 @@ const TablePagination = () => {
   };
 
   const fetchEventTypes = () => {
-    fetch("http://localhost:8000/event-types")
+    fetch(SERVICE_URL+"/event-types")
       .then((response) => response.json())
       .then((data) => {
         setEventTypes(data);
@@ -54,7 +62,7 @@ const TablePagination = () => {
   };
 
   const fetchCountries = () => {
-    fetch("http://localhost:8000/countries")
+    fetch(SERVICE_URL+"/countries")
       .then((response) => response.json())
       .then((data) => {
         setCountries(data);
@@ -62,6 +70,10 @@ const TablePagination = () => {
       .catch((error) => {
         console.error('Error en la solicitud:', error);
       });
+  };
+
+  const updateTableData = () => {
+    fetchEvents(currentPage);
   };
 
   useEffect(() => {
@@ -83,6 +95,61 @@ const TablePagination = () => {
   const handleSearch = () => {
     setSearchPerformed(true);
     fetchEvents(1);
+  };
+
+  const handleModalOpen = () => {
+    setShowModal(true);
+  };
+
+  const handleModalClose = () => {
+    setShowModal(false);
+    resetModalData();
+    updateTableData();
+  };
+
+  const resetModalData = () => {
+    setModalData({
+      typeid: 0,
+      description: "",
+      countryid: 0
+    });
+  };
+
+  const handleModalSave = () => {
+    const parsedCountryId = parseInt(modalData.countryid);
+    const parsedTypeId = parseInt(modalData.typeid);
+    const eventData = {
+        typeid: parsedTypeId,
+        description: modalData.description,
+        countryid: parsedCountryId,
+      };
+    fetch(SERVICE_URL+"/events", {
+        method: "POST",
+        headers: {
+        "Content-Type": "application/json",
+        },
+        body: JSON.stringify(eventData),
+    })
+    //.then((response) => response.json())
+    .then((data) => {
+        if (data) {
+            console.log("Event saved successfully:", data);
+          } else {
+            console.log("Event saved successfully.");
+          }     
+        handleModalClose();
+    })
+    .catch((error) => {
+        console.error("Error saving event:", error);
+    });
+  };
+
+  const handleModalInputChange = (event) => {
+    const { name, value } = event.target;
+    setModalData(prevData => ({
+      ...prevData,
+      [name]: value
+    }));
   };
 
   return (
@@ -131,7 +198,7 @@ const TablePagination = () => {
           />
         </div>
         <div className="col">
-          <button onClick={handleSearch}>Buscar</button>
+          <button className="btn btn-primary" onClick={handleSearch}>Buscar</button>
         </div>
       </div>
       <br /><br />
@@ -186,7 +253,65 @@ const TablePagination = () => {
             />
           </Pagination>
         </div>
+        <div className="col">
+          <Button onClick={handleModalOpen}>Guardar</Button>
+        </div>
       </div>
+
+      {/* Modal */}
+      <Modal show={showModal} onHide={handleModalClose}>
+        <Modal.Header closeButton>
+          <Modal.Title>Ingresar evento</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <label>Tipo de evento:</label>
+          <select
+            name="typeid"
+            className="form-control"
+            value={modalData.typeid}
+            onChange={handleModalInputChange}
+          >
+            <option value="">Seleccione un tipo de evento</option>
+            {eventTypes.map((eventType) => (
+              <option key={eventType.id} value={eventType.id}>
+                {eventType.description}
+              </option>
+            ))}
+          </select>
+          <br />
+          <label>Descripción:</label>
+          <input
+            type="text"
+            name="description"
+            className="form-control"
+            value={modalData.description}
+            onChange={handleModalInputChange}
+          />
+          <br />
+          <label>País:</label>
+          <select
+            name="countryid"
+            className="form-control"
+            value={modalData.countryid}
+            onChange={handleModalInputChange}
+          >
+            <option value="">Seleccione un país</option>
+            {countries.map((country) => (
+              <option key={country.id} value={country.id}>
+                {country.description}
+              </option>
+            ))}
+          </select>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleModalClose}>
+            Cancelar
+          </Button>
+          <Button variant="primary" onClick={handleModalSave}>
+            Guardar
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };
